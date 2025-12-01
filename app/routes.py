@@ -1,71 +1,31 @@
-from flask import Flask, jsonify, render_template
-from sqlalchemy import text
-import datetime
-import os
-
-try:
-    from app.models import db, Node, Device, Template, TemplateAction
-except ImportError:
-    # Если импорт не удался (например, в тестах)
-    Node = Device = Template = TemplateAction = None
+from flask import Flask, render_template
+from app.models import db, Node, Device, Template, TemplateAction
+import logging
 
 
-# Создаем app здесь
+logging.basicConfig(level=logging.INFO, filename="app.log", filemode="w",
+                    format="%(asctime)s %(levelname)s %(message)s")
+
 app = Flask(__name__)
 
-
-@app.route('/health')
-def health():
-    return jsonify({
-        "status": "healthy",
-        "timestamp": datetime.datetime.now().isoformat(),
-        "service": "pyni"
-    })
-
-@app.route('/about')
-def about():
-    return jsonify({
-        "project": "PyNIS",
-        "version": "0.1.0",
-        "description": "Python Network Inventory Script",
-        "author": "Alex Mass",
-        "repository": "https://github.com/sincityview/pynis",
-        "api_version": "v1",
-        "endpoints": {
-            "health": "/health"
-        }
-    })
 
 @app.route('/')
 @app.route('/index')
 def index():
-    return render_template("index.html",
-        title='Home',
-        data='PyNIS')
-
-@app.route('/db')
-def db_status():
-    # Проверяем, инициализирована ли db
-    if db is None:
-        return "❌ DB not initialized", 500
-    
-    try:
-        db.session.execute(text('SELECT 1'))
-        status = '✅ connected'
-    except Exception as e:
-        status = f'❌ error: {str(e)}'
-    
-    return render_template("index.html",
-        title='Database Status',
-        data=status)
+    """Дашборд"""
+    title='Home'
+    data='NIS'
+    return render_template("index.html", title=title, data=data)
 
 
 @app.route('/nodes')
 def get_nodes():
     """Получить все узлы"""
+    title='Home'
+
     if db is None:
-        return jsonify({"error": "Database not initialized"}), 500
-    
+        return (f"Ошибка: нет подключения к базе данных")
+
     try:
         nodes = Node.query.all()
         result = []
@@ -76,6 +36,7 @@ def get_nodes():
                 'address': node.address,
                 'device_count': len(node.devices)
             })
-        return jsonify({"nodes": result, "count": len(nodes)})
+        return render_template("index.html", title=title, data=node.name)
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return (f"Ошибка: {str(e)}")
